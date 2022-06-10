@@ -1,8 +1,14 @@
 package main
 
 import (
+	"crypto/sha1"
+	"fmt"
 	"html/template"
+	"io"
 	"net/http"
+	"os"
+	"path/filepath"
+	"strings"
 	"time"
 
 	"web-photo-blog/user"
@@ -48,6 +54,54 @@ func main() {
 }
 
 func index(w http.ResponseWriter, r *http.Request) {
+	if r.Method == http.MethodPost {
+		mf, fh, err := r.FormFile("nf")
+		if err != nil {
+			http.Error(w,
+				"Internal Server Error",
+				http.StatusInternalServerError)
+
+			panic(err)
+		}
+		defer mf.Close()
+
+		ext := strings.Split(fh.Filename, ".")[1]
+		h := sha1.New()
+
+		io.Copy(h, mf)
+
+		fname := fmt.Sprintf("%x.%v", h.Sum(nil), ext)
+
+		wd, err := os.Getwd()
+		if err != nil {
+			http.Error(w,
+				"Internal Server Error",
+				http.StatusInternalServerError)
+
+			panic(err)
+		}
+
+		path := filepath.Join(wd, "public", "photos", fname)
+		nf, err := os.Create(path)
+		if err != nil {
+			http.Error(w,
+				"Internal Server Error",
+				http.StatusInternalServerError)
+
+			panic(err)
+		}
+		defer nf.Close()
+
+		// Because mf's pointer is at the end of the file we need to
+		// move it to the start.
+		mf.Seek(0, 0)
+		io.Copy(nf, mf)
+
+		// TODO: Upload photo to database and check if fname is already
+		// in the database before uploading.
+		fmt.Println(fname)
+	}
+
 	tpl.ExecuteTemplate(w, "index.gohtml", getUser(w, r))
 }
 

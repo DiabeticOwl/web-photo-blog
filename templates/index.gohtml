@@ -11,6 +11,10 @@
             USER NAME: {{ .UserName }}<br>
             FIRST NAME: {{ .FirstName }}<br>
             LAST NAME: {{ .LastName }}<br>
+            <form method="post" enctype="multipart/form-data">
+                <input type="file" name="nf">
+                <input type="submit" value="Upload Photo">
+            </form>
             <h1><a href="/logout">Log Out Here</a></h1>
         {{ else }}
             <h1><a href="/signup">Sign Up Here</a></h1>
