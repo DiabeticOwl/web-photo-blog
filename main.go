@@ -39,18 +39,16 @@ func main() {
 	// 	panic(err)
 	// }
 
-	// TODO: Add Log out.
-
 	http.HandleFunc("/", index)
 	http.HandleFunc("/signup/", signUp)
 	http.HandleFunc("/login/", login)
-	// http.HandleFunc("/logout/", logout)
+	http.HandleFunc("/logout/", logout)
 
 	http.ListenAndServe(":8080", nil)
 }
 
-func index(w http.ResponseWriter, req *http.Request) {
-	tpl.ExecuteTemplate(w, "index.gohtml", nil)
+func index(w http.ResponseWriter, r *http.Request) {
+	tpl.ExecuteTemplate(w, "index.gohtml", getUser(w, r))
 }
 
 func signUp(w http.ResponseWriter, r *http.Request) {
@@ -171,4 +169,22 @@ func login(w http.ResponseWriter, r *http.Request) {
 	}
 
 	tpl.ExecuteTemplate(w, "login.gohtml", nil)
+}
+
+func logout(w http.ResponseWriter, r *http.Request) {
+	if !alreadyLoggedIn(w, r) {
+		http.Redirect(w, r, "/", http.StatusSeeOther)
+		return
+	}
+
+	// err is thrown because it is already checked in "alreadyLoggedIn".
+	c, _ := r.Cookie("session")
+
+	c.MaxAge = -1
+	c.Path = "/"
+	http.SetCookie(w, c)
+
+	delete(dbSessions, c.Value)
+
+	http.Redirect(w, r, "/", http.StatusSeeOther)
 }
