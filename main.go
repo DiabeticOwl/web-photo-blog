@@ -81,8 +81,8 @@ func signUp(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		sID := uuid.New().String()
-		saltPass := uuid.New().String()
+		sID := uuid.NewString()
+		saltPass := uuid.NewString()
 
 		c := &http.Cookie{
 			Name:     "session",
