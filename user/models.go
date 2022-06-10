@@ -88,11 +88,7 @@ func SearchUser(un string) (User, error) {
 		&u.FirstName,
 		&u.LastName,
 	)
-	if err != nil {
-		return u, err
-	}
-
-	return u, nil
+	return u, err
 }
 
 func AddUser(u User) error {

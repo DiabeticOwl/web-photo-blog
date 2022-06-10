@@ -4,7 +4,23 @@ import (
 	"net/http"
 	"time"
 	"web-photo-blog/user"
+
+	"github.com/google/uuid"
 )
+
+func setCookie(w http.ResponseWriter) *http.Cookie {
+	c := &http.Cookie{
+		Name:     "session",
+		Value:    uuid.NewString(),
+		Path:     "/",
+		HttpOnly: true,
+		MaxAge:   sessionLength,
+	}
+
+	http.SetCookie(w, c)
+
+	return c
+}
 
 // getUser returns the user found in the session.
 // Returns a zero value of type user if none found.

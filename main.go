@@ -39,10 +39,13 @@ func main() {
 	// 	panic(err)
 	// }
 
-	// TODO: Add Login and Log out.
+	// TODO: Add Log out.
 
 	http.HandleFunc("/", index)
 	http.HandleFunc("/signup/", signUp)
+	http.HandleFunc("/login/", login)
+	// http.HandleFunc("/logout/", logout)
+
 	http.ListenAndServe(":8080", nil)
 }
 
@@ -81,23 +84,13 @@ func signUp(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		sID := uuid.NewString()
-		saltPass := uuid.NewString()
-
-		c := &http.Cookie{
-			Name:     "session",
-			Value:    sID,
-			Path:     "/",
-			HttpOnly: true,
-			MaxAge:   sessionLength,
-		}
-
-		http.SetCookie(w, c)
+		c := setCookie(w)
 		dbSessions[c.Value] = session{
 			un:           un,
 			lastActivity: time.Now(),
 		}
 
+		saltPass := uuid.NewString()
 		// Encrypting password with bcrypt.
 		sb, err := bcrypt.GenerateFromPassword(
 			[]byte(saltPass+pw),
@@ -108,7 +101,7 @@ func signUp(w http.ResponseWriter, r *http.Request) {
 				"Internal Server Error",
 				http.StatusInternalServerError)
 
-			// Put panic instead of return since this error might be not very
+			// Put panic instead of return since this error might not be very
 			// clear so panic will help more in debugging.
 			panic(err)
 		}
@@ -135,4 +128,47 @@ func signUp(w http.ResponseWriter, r *http.Request) {
 	}
 
 	tpl.ExecuteTemplate(w, "signup.gohtml", nil)
+}
+
+func login(w http.ResponseWriter, r *http.Request) {
+	if alreadyLoggedIn(w, r) {
+		http.Redirect(w, r, "/", http.StatusSeeOther)
+		return
+	}
+
+	if r.Method == http.MethodPost {
+		un := r.FormValue("username")
+		pw := r.FormValue("password")
+
+		u, err := user.SearchUser(un)
+		if err != nil {
+			http.Error(w,
+				"Internal Server Error",
+				http.StatusInternalServerError)
+
+			panic(err)
+		}
+
+		err = bcrypt.CompareHashAndPassword(
+			u.Password,
+			[]byte(u.SaltPass+pw),
+		)
+		if err != nil {
+			http.Error(w,
+				"Incorrect Username or Password.",
+				http.StatusForbidden)
+			return
+		}
+
+		c := setCookie(w)
+		dbSessions[c.Value] = session{
+			un:           un,
+			lastActivity: time.Now(),
+		}
+
+		http.Redirect(w, r, "/", http.StatusSeeOther)
+		return
+	}
+
+	tpl.ExecuteTemplate(w, "login.gohtml", nil)
 }
