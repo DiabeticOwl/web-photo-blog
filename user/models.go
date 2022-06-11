@@ -8,6 +8,7 @@ import (
 )
 
 type User struct {
+	ID        int
 	UserName  string
 	SaltPass  string
 	Password  []byte
@@ -70,6 +71,7 @@ func SearchUser(un string) (User, error) {
 
 	q := fmt.Sprintf(`
 		SELECT
+			ID,
 			UserName,
 			SaltPass,
 			Password,
@@ -82,6 +84,7 @@ func SearchUser(un string) (User, error) {
 	row := db.QueryRow(q, un)
 
 	err := row.Scan(
+		&u.ID,
 		&u.UserName,
 		&u.SaltPass,
 		&u.Password,

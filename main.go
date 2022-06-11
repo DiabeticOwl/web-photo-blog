@@ -5,12 +5,14 @@ import (
 	"fmt"
 	"html/template"
 	"io"
+	"io/ioutil"
 	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
 
+	"web-photo-blog/photo"
 	"web-photo-blog/user"
 
 	"github.com/google/uuid"
@@ -40,11 +42,6 @@ func init() {
 }
 
 func main() {
-	// dbUsers, err := user.AllUsers()
-	// if err != nil {
-	// 	panic(err)
-	// }
-
 	http.HandleFunc("/", index)
 	http.HandleFunc("/signup/", signUp)
 	http.HandleFunc("/login/", login)
@@ -55,13 +52,11 @@ func main() {
 
 func index(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodPost {
+		u := getUser(w, r)
+
 		mf, fh, err := r.FormFile("nf")
 		if err != nil {
-			http.Error(w,
-				"Internal Server Error",
-				http.StatusInternalServerError)
 
-			panic(err)
 		}
 		defer mf.Close()
 
@@ -72,6 +67,28 @@ func index(w http.ResponseWriter, r *http.Request) {
 
 		fname := fmt.Sprintf("%x.%v", h.Sum(nil), ext)
 
+		p, err := photo.SearchPhoto(fname)
+		if err != nil && p.Fname != "" {
+			http.Error(w,
+				"Internal Server Error",
+				http.StatusInternalServerError)
+
+			panic(err)
+		}
+
+		if p.Fname != "" && p.UserId != u.ID {
+			fmt.Println("New user - same pic.")
+			// TODO: Create new entity in which the users id and photos id are
+			// related to their respective parent entities. (Many to Many)
+			photo.AddPhoto(u, p.PhotoBlob, p.Fname)
+
+			return
+		} else if p.Fname != "" && p.UserId == u.ID {
+			fmt.Println("Same user - same pic.")
+			return
+		}
+
+		fmt.Println("New/Same user - New pic.")
 		wd, err := os.Getwd()
 		if err != nil {
 			http.Error(w,
@@ -97,9 +114,24 @@ func index(w http.ResponseWriter, r *http.Request) {
 		mf.Seek(0, 0)
 		io.Copy(nf, mf)
 
-		// TODO: Upload photo to database and check if fname is already
-		// in the database before uploading.
-		fmt.Println(fname)
+		mf.Seek(0, 0)
+		sb, err := ioutil.ReadAll(mf)
+		if err != nil {
+			http.Error(w,
+				"Internal Server Error",
+				http.StatusInternalServerError)
+
+			panic(err)
+		}
+
+		err = photo.AddPhoto(getUser(w, r), sb, fname)
+		if err != nil {
+			http.Error(w,
+				"Internal Server Error",
+				http.StatusInternalServerError)
+
+			panic(err)
+		}
 	}
 
 	tpl.ExecuteTemplate(w, "index.gohtml", getUser(w, r))
